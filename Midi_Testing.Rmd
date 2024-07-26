@@ -1,0 +1,24 @@
+---
+title: "Midi_Testing"
+author: "KEC"
+date: "2024-07-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+source("setup.R")
+
+```
+
+
+Load example midi data provided with fluidsynth
+
+```{r example_midi}
+# Playing with midi data in fluidsynth
+
+my_midi <- demo_midi()
+midi_df <- midi_read(my_midi)
+
+```
