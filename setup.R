@@ -41,6 +41,10 @@ if(!"fluidsynth" %in% installed.packages()) {
 library(fluidsynth)
 
 
+source("src/note_conversion_utils.R")
+source("src/sonify_data.R")
+source("src/load_psn.R")
+
 # source all functions --------------------------
 
 #purrr::map(list.files(
