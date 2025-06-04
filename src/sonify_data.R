@@ -10,15 +10,18 @@
 #' 
 sonify_data <- function(data_array_to_sonify, ref_freq, to_plot = FALSE,
                         raw_min = 10, raw_max = 1000, total_seconds = 30,
-                        samp_width = 4*64) {
+                        samp_width = 4*64,
+                        wave_type = c("square","sine","triangle","sawtooth")) {
   
   #data_array_to_sonify = sd$value
-  #ref_freq = 440
-  #to_plot = TRUE
-  #raw_min = 16
-  #raw_max = 500
-  #total_seconds = 20
-  #samp_width <- 64*4
+  data_array_to_sonify = data_array_to_sonify[!is.na(data_array_to_sonify)]
+  ref_freq = 440
+  to_plot = TRUE
+  raw_min = 16
+  raw_max = 500
+  total_seconds <- 20
+  note_length <- 0.1 # seconds
+  samp_width <- 64*4
   
   
   if (to_plot == TRUE) {
@@ -107,7 +110,7 @@ sonify_data <- function(data_array_to_sonify, ref_freq, to_plot = FALSE,
   # Sonify new frequency (notes)
   w2 <- sonify(hz_notes, 
                flim = c(min(hz_notes, na.rm = TRUE),max(hz_notes, na.rm = TRUE)), 
-               waveform = "sawtooth",    #c("sine", "square", "triangle","sawtooth"), 
+               waveform = wave_type,    #c("sine", "square", "triangle","sawtooth"), 
                interpolation = "constant", #c("spline", "linear", "constant"),
                smp_rate = 44100, 
                duration = total_seconds)
