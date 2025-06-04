@@ -12,28 +12,32 @@ setWavPlayer("afplay")
 
 # For this example, we'll pull data from the Poudre Water Quality Network.
 
+# load PWQN data
 all_PWQN <- load_psn()
 
 # Select subset necessary for sound only
-
 sites <- c("archery virridy","archery","boxcreek","boxelder","cbri",              
            "chd", "joei",  "lbea",  "legacy",  "lincoln",           
            "pbd", "penn", "pfal", "prospect virridy", "prospect",          
            "river bluffs", "sfm",  "springcreek", "tamasag", "timberline virridy",
            "timberline")
 
+# Select site
 site_sel <- "prospect virridy"
 
+# Filter all data to site only
 site_PWQN <-  all_PWQN %>%
   dplyr::filter(site == site_sel) 
 
+# Plot
 ggplot(site_PWQN, aes(x = as.Date(DT_join), y = clean_mean, color = parameter)) + 
   geom_point(size = .5) +
   theme_bw() +
   scale_color_manual("", values = c(light_pal, dark_pal)) +
   facet_wrap(~parameter, scales = "free")
 
-pars <- c(3)
+# Now, select parameter to sonify
+pars <- c(3,4) # can also type string here
 sd1 <- site_PWQN %>% 
   dplyr::filter(site == site_sel, 
                 parameter %in% unique(parameter)[pars]) %>%
@@ -42,6 +46,7 @@ sd1 <- site_PWQN %>%
   dplyr::select(c(date, parameter, value = clean_mean)) #%>%
  # pivot_wider(names_from = "parameter", values_from = "value")
 
+# Define name for saving subsequent files
 fname <- paste0(site_sel,"_",paste(sd1$parameter %>% unique(), collapse = "_"))
 
 pg <- ggplot(sd1, aes(x = date, y = value, color = parameter)) + 
@@ -50,15 +55,22 @@ pg <- ggplot(sd1, aes(x = date, y = value, color = parameter)) +
   facet_wrap(~parameter, scales = "free") 
 pg
 
+# if multiple parameters are selected, pivot table. 
 sd <- sd1 %>%
  pivot_wider(names_from = "parameter", values_from = "value")
 
+# Save figure of data to be sonified
 ggsave(paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_data.jpg"),
        plot = pg, dpi = 600, height = 3, width = 6, units = "in")  
 
-#ref_freq <- 261.63 #C
-#ref_freq <- 440 #A
-#Note	Frequency (Hz)
+
+
+############################## SONIFY DATA  ####################################
+
+# Some frequencies for reference - C3 indicates C, third octave
+# Each time you divide the frequency by 2, you go down an octave. 
+# Each note is 2^(1/12) because there are 12 half steps in an octave.
+# Frequency (Hz)
 #.    C3 130.81
 #.    C4 (Middle C)	261.63
 #.    C#4/Db4	277.18
@@ -73,33 +85,33 @@ ggsave(paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_data.jpg"),
 #.    A#4/Bb4	466.16
 #.    B4	493.88
 
-total_seconds <- 60
-note_len <- .5
-ref_freq <- 440/2
+# Set some parameters for output sound
+total_seconds <- 60 # total length of "song"
+note_len <- .2 # length of each note
+ref_freq <- 261.63 # 
+n_octaves <- 4
 
 main <- sonify_data2(data_array_to_sonify = sd[,2],
                     ref_freq = ref_freq,
                     to_plot = TRUE,
-                    octaves = 3,
+                    octaves = n_octaves,
                     note_length = note_len,
                     total_seconds = total_seconds,
-                    wave_type = "triangle", # square, triangle, sawtooth, sine
-                    scale = "major",
+                    wave_type = "sine", # square, triangle, sawtooth, sine
+                    scale = "minor",
                     to_play = FALSE) 
 
+# Play raw wave
+#play(main[[1]])
 
-#test <- apply_envelope_filter(main[[1]], note_duration = 0.2, attack = 0.01, decay = 0.1, release = 0.1, overlap_factor = 0.2, base = 0.1, sustain = 0.7)
-
-#plot(main[[1]]@.Data[1:4000,1], type = "l")
-
-# Example usage:
+# Add feedback
 feedback_wave <- add_feedback(main[[1]], feedback_gain = 1, delay_samples = 44100 * .8) %>%
     add_feedback(feedback_gain = 1, delay_samples = floor(44100 * .7)) %>%
     add_feedback(feedback_gain = 1, delay_samples = 44100 * .5) %>%
     add_feedback(feedback_gain = .5, delay_samples = 44100 * .2) 
     
-  
 play(feedback_wave)
+
 writeWave(feedback_wave, paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_slow.wav"))
 
 jpeg(paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_notes.jpg"), 
@@ -108,11 +120,9 @@ print(main[[2]][[5]])
 
 dev.off()
 
-
-
-
-
+# Now, join to a second wave
 #a <- animate_sound(main[[2]][[6]], .2, 30)
+
 
 base <- sonify_data2(data_array_to_sonify = sd[,3],
                      ref_freq = 65.4, # C2                                                                                                                                             
@@ -124,20 +134,16 @@ base <- sonify_data2(data_array_to_sonify = sd[,3],
                      wave_type = "sine", # square, triangle, sawtooth, sine
                      scale = "minor",
                      to_play = FALSE) 
-
-
-
-
-
+# Now, join to other wave
 joined_wave <- feedback_wave
-
 joined_wave@.Data[,1] <- joined_wave@.Data[,1] + base[[1]]@.Data[,1]
 joined_wave@.Data[,2] <- joined_wave@.Data[,2] + base[[1]]@.Data[,2]
-
 joined_wave <- tuneR::normalize(joined_wave, unit = "16")
 
+# Play joined wave
 play(joined_wave)
 
+# save joined wave
 writeWave(joined_wave, paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,".wav"))
 
 
@@ -146,26 +152,7 @@ writeWave(joined_wave, paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fnam
 # Play the wave with feedback
 play(feedback_wave)
 
-
-t <- add_resonance(test[[1]], 440, 200, .5)
-play(t)
-
-
-white_noise <- noise(kind = "pink", duration = 20, samp.rate = 44100)
-
-
-
-# Play the modified wave
-play(new_wave)
-
-
-tuneR::play(test[[1]])
-
-
-writeWave(test[[1]], paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,".wav"))
-
-
-
+# Save final figure with notes.
 jpeg(paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_notes.jpg"), 
      width = 6, height = 6, res = 200, units = "in")
 
@@ -175,8 +162,10 @@ dev.off()
 
 
 
+##### Playing around with a bunch of functions - in development
 
 
+# envelope filter concept.
 apply_envelope_filter <- function(waveform, note_duration, attack, decay, release, base, sustain, overlap_factor = 0.5) {
  
   #waveform <- main[[1]]
@@ -253,6 +242,7 @@ apply_envelope_filter <- function(waveform, note_duration, attack, decay, releas
 }
 
 
+# Trying to recreate instruments using envelope filters + harmonics
 create_clarinet_sound <- function(frequency, duration, sample_rate, harmonics, amplitudes, envelope) {
   
   duration <- 30
@@ -275,8 +265,6 @@ create_clarinet_sound <- function(frequency, duration, sample_rate, harmonics, a
     waveform <- waveform + amplitudes[i] * sin(2 * pi * harmonics[i] * frequency * time)
   }
 
-  
-  
   
   # Apply the envelope
   waveform <- waveform * envelope
@@ -303,6 +291,7 @@ play(clarinet_sound)
 
 s5 = reverb(waveform,
             echoDelay = 850, echoLevel = -40)
+
 
 apply_reverb <- function(waveform, delay_ms, decay_ms, mix) {
   
