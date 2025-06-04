@@ -19,7 +19,11 @@ packages <- c("sonify",
               "dplyr",
               "pastecs",
               "ggplot2",
-              "tidyverse"
+              "tidyverse",
+              "seewave",
+              "signal",
+              "soundgen",
+              "purrr"
 )
 
 packageLoad(packages)
@@ -43,6 +47,7 @@ library(fluidsynth)
 
 source("src/note_conversion_utils.R")
 source("src/sonify_data.R")
+source("src/sonify_data2.R")
 source("src/load_psn.R")
 
 # source all functions --------------------------
