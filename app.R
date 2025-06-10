@@ -15,7 +15,7 @@ library(seewave)
 library(signal)
 library(soundgen)
 library(base64enc)
-
+library(shinyjs)
 
 
 # set wave player - Note this is for mac. 
@@ -39,11 +39,11 @@ ui <- page_navbar(
         selectInput("parameter", "Parameter:", choices = parameters, selected = "DO", multiple = T),
         dateRangeInput("dateRange", "Date Range:", 
                        min = as.Date("2023-01-01"),
-                       max = as.Date("2024-12-01"), start = "2023-03-01", end = "2023-06-01" 
+                       max = as.Date("2024-12-01"), start = "2023-01-01", end = "2023-12-01" 
         ),
         selectInput("timestep", "Timestep:", choices = c("15 minute", "1 hour", "6 hour", "12 hour", 
                                                          "1 day", "1 week", "1 month"), 
-                    selected = "15 minute"),
+                    selected = "1 hour"),
         actionButton("plotBtn", "Plot Data", class = "btn-primary"),
       ),
       # Main content area with plot card in the middle and sonification on the right
@@ -62,14 +62,19 @@ ui <- page_navbar(
           card_header("Sonification Parameters"), 
           numericInput("totalSeconds", "Total Duration (seconds):", value = 120, min = 10, max = 300),
           numericInput("noteLength", "Note Length (seconds):", value = 0.2, min = 0.1, max = 1, step = 0.1),
-          numericInput("refFreq", "Reference Frequency (Hz):", value = 220, min = 100, max = 500),
+          #numericInput("refFreq", "Reference Frequency (Hz):", value = 220, min = 100, max = 500),
+          numericInput("octave", "Central Octave:", value = 3, min = 0, max = 7),
           numericInput("octaves", "Octave Range:", value = 3, min = 1, max = 5),
+          selectInput("key", "Key:", 
+                      choices = c("Ab","A","Bb","B","C","C#","D","Eb","E","F","F#","G"),
+                      selected = "A"),
           selectInput("waveType", "Wave Type:",
                       choices = c("sine", "square", "triangle", "sawtooth"),
                       selected = "triangle"),
           selectInput("scale", "Musical Scale:",
                       choices = c("major", "minor"),
                       selected = "minor"), 
+          selectInput("feedback_opt", "Feedback:", choice = c(TRUE,FALSE), selected = FALSE),
           actionButton("playBtn", "Play Audio", class = "btn-info"), 
           uiOutput("audioPlayer"),
           downloadButton("downloadBtn", "Download Wave")
@@ -149,10 +154,13 @@ server <- function(input, output, session){
                            note_length = input$noteLength,
                            to_plot = FALSE,
                            total_seconds = input$totalSeconds,
-                           ref_freq = input$refFreq,
+                           #ref_freq = input$refFreq,
+                           key = input$key,
+                           octave = input$octave,
                            octaves = input$octaves,
                            wave_type = input$waveType,
                            scale = input$scale, 
+                           feedback = input$feedback_opt,
                            to_play = FALSE
     )
     
@@ -195,12 +203,16 @@ server <- function(input, output, session){
       
       sound <- sonify_data2(filtered_data()$clean_mean,
                             note_length = input$noteLength,
-                            to_plot = F,
+                            to_plot = FALSE,
                             total_seconds = input$totalSeconds,
-                            ref_freq = input$refFreq,
+                            #ref_freq = input$refFreq,
+                            key = input$key,
+                            octave = input$octave,
                             octaves = input$octaves,
                             wave_type = input$waveType,
-                            scale = input$scale, to_play = F)[1]
+                            scale = input$scale, 
+                            feedback = input$feedback_opt,
+                            to_play = FALSE)[1]
       
       writeWave(object = sound[[1]], filename = file) 
     }
