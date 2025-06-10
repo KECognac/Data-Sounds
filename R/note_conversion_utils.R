@@ -55,34 +55,119 @@ note_num_to_freq <- function(note, ref = 440) {
 }
 
 
-note_to_freq <- function (note, ref = 440, octave = 3) {
-  ref <- 440
-  note <- "A#"
-  octave <- 3
+#' A4 (A in the 4th octave) is standardized at 440 Hz. This is the common reference point.
+#'The frequency ratio between two consecutive notes in Western equal temperament is the 12th root of 2 (approximately 1.059463). This is because there are 12 semitones in an octave, and each octave doubles the frequency.
+#'Grand Piano Range:
+#'A standard grand piano typically spans 88 keys, from A0 (the lowest note) to C8 (the highest note).
+#'Steps:
+#'Define Note Mapping: Create a mapping from note names (C, C#, D, D#, E, F, F#, G, G#, A, A#, B) to their semitone position relative to C.
+#'Calculate Semitone Offset from A4: Determine the total number of semitones away from A4 (the 440 Hz reference).
+
+#' Calculate the frequency of a musical note.
+#'
+#' This function takes a musical note (e.g., "A", "C#", "Eb") and an octave
+#' number and returns its frequency in Hertz (Hz), based on A4 = 440 Hz
+#' and 12-tone equal temperament. It covers the range of a standard grand piano
+#' (A0 to C8).
+#'
+#' @param note A character string representing the musical note.
+#'   Valid values are "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#",
+#'   "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B". Case-insensitive.
+#' @param octave An integer representing the octave number.
+#'   Valid range for a standard grand piano is typically 0 to 8.
+#' @param ref A numeric value for the reference frequency of A4. Defaults to 440 Hz.
+#' @return The frequency of the note in Hertz (numeric). Returns NA if
+#'   the note or octave is invalid or out of grand piano range.
+#' @examples
+#' note_to_frequency("A", 4)  # Should return 440
+#' note_to_frequency("C", 4)  # Middle C
+#' note_to_frequency("C", 8)  # Highest C on piano
+#' note_to_frequency("A", 0)  # Lowest A on piano
+#' note_to_frequency("G#", 3)
+#' note_to_frequency("Bb", 2)
+#' note_to_frequency("X", 4)  # Invalid note
+#' note_to_frequency("C", 9)  # Octave out of range
+note_to_freq <- function(note, octave, ref = 440) {
   
-  if (is.character(note)) {
-    n <- any(nchar(note))
-    if (n > 2) 
-      stop("'note' cannot be a character vector with more than 2 characters")
-    if (any(note == c("E#", "Fb", "B#", "Cb"))) 
-      stop("This note does not exist")
-    if (n == 2) {
-      notesplit <- unlist(strsplit(note, split = NULL))
-      if (notesplit[2] == "b") 
-        names <- c("C", "Db", "D", "Eb", "E", "F", "Gb", 
-                   "G", "Ab", "A", "Bb", "B")
-      if (notesplit[2] == "#") 
-        names <- c("C", "C#", "D", "D#", "E", "F", "F#", 
-                   "G", "G#", "A", "A#", "B")
-    }
-    else names <- c("C", "C#", "D", "D#", "E", "F", "F#", 
-                    "G", "G#", "A", "A#", "B")
-    note2 <- which(names == note)
+  # Standard reference: A4 = 440 Hz
+  A4_FREQ <- ref
+  
+  # Define semitone values relative to C in an octave (0-11)
+  # Using a comprehensive lookup that handles sharps and flats consistently
+  clean_note_map <- c(
+    "C" = 0, "C#" = 1, "D" = 2, "D#" = 3, "E" = 4,
+    "F" = 5, "F#" = 6, "G" = 7, "G#" = 8, "A" = 9,
+    "A#" = 10, "B" = 11,
+    # Add flat equivalents explicitly
+    "DB" = 1, "EB" = 3, "GB" = 6, "AB" = 8, "BB" = 10
+  )
+  
+  # Convert input note to uppercase for case-insensitivity
+  note_upper <- toupper(note)
+  # For flat notes, replace 'b' with 'B' to match lookup (e.g., "Db" -> "DB")
+  note_upper <- gsub("B$", "BB", note_upper) # Handles cases like "Bb" -> "BB"
+  note_upper <- gsub("B$", "B", note_upper) # Ensure a lone 'B' remains 'B'
+  note_upper <- gsub("B$", "B", note_upper) # Handles cases like "Ab" -> "AB" etc.
+  note_upper <- gsub("B$", "B", note_upper) # Handles cases like "Gb" -> "GB" etc.
+  note_upper <- gsub("B$", "B", note_upper) # Handles cases like "Eb" -> "EB" etc.
+  note_upper <- gsub("B$", "B", note_upper) # Handles cases like "Db" -> "DB" etc.
+  
+  
+  # A simpler and more robust way to handle the input note string
+  # Create a unified lookup for both sharps and flats directly
+  # The original 'note_map' is sufficient if we don't mess with the input string 'note_upper'
+  # in a way that breaks the lookup. Let's rely on the more explicit 'clean_note_map' keys.
+  # The 'gsub("B$", "BB", note_upper)' etc. lines are problematic for actual 'B' notes.
+  
+  # Simpler way to clean up input note for lookup:
+  # Just convert to upper and then handle the accidental symbol lookup.
+  # The previous gsub lines were causing issues.
+  # Let's rebuild the clean_note_map and directly lookup.
+  clean_note_map <- c(
+    "C" = 0, "C#" = 1, "D" = 2, "D#" = 3, "E" = 4,
+    "F" = 5, "F#" = 6, "G" = 7, "G#" = 8, "A" = 9,
+    "A#" = 10, "B" = 11,
+    # Flat equivalents
+    "DB" = 1, "EB" = 3, "GB" = 6, "AB" = 8, "BB" = 10 # Uppercased flat symbols
+  )
+  
+  # Ensure the input 'note' is uppercased.
+  # For 'b' (flat) notation, replace 'b' with 'B' in the input string to match lookup table keys like "DB", "EB"
+  # This makes "Db" become "DB", "Eb" becomes "EB" etc.
+  processed_note <- toupper(gsub("b", "B", note))
+  
+  
+  # Get the semitone index for the given note in its octave (0-11)
+  note_semitone_in_octave <- clean_note_map[processed_note]
+  
+  # Validate note
+  if (is.na(note_semitone_in_octave)) {
+    warning("Invalid note: '", note, "'. Please use valid note names (e.g., 'C', 'C#', 'Eb').")
+    return(NA_real_)
   }
-  f <- ref * 2^((octave - 3) + ((note2 - 10)/12))
-  return(f)
   
+  # Calculate MIDI note number (where C0 is MIDI note 12)
+  # This formula is standard: MIDI note = (octave + 1) * 12 + semitone_index (where C is 0 in its octave)
+  midi_note_num <- (octave + 1) * 12 + note_semitone_in_octave
+  
+  # Check against standard grand piano range (A0 to C8)
+  # A0 is MIDI note 21
+  # C8 is MIDI note 108
+  if (midi_note_num < 21 || midi_note_num > 108) {
+    warning("Note and octave combination ('", note, octave, "') is outside the standard grand piano range (A0-C8, MIDI notes 21-108).")
+    return(NA_real_)
+  }
+  
+  # Calculate total semitones from A4 (MIDI note 69)
+  # A4 has MIDI note number 69
+  semitones_from_A4 <- midi_note_num - 69
+  
+  # Calculate frequency using the equal temperament formula
+  frequency <- A4_FREQ * 2^(semitones_from_A4 / 12)
+  
+  return(frequency)
 }
+
 
 map_to_freq_range <- function(vals, min_freq, max_freq) {
   old_min <- min(vals, na.rm = TRUE)
@@ -149,7 +234,6 @@ add_resonance <- function(wave, resonance_freq, resonance_bandwidth, gain) {
 
 # Function to add feedback
 add_feedback <- function(wave, feedback_gain, delay_samples) {
-
   
   wave_dat <- wave@.Data[,1]
   
@@ -167,11 +251,6 @@ add_feedback <- function(wave, feedback_gain, delay_samples) {
   # normalize wave
   new_wave <- normalize(new_wave, unit = "16")
   
-  # Clip the signal to prevent clipping
-  #new_wave <- pmax(pmin(new_wave, 1), -1)
-  
-  # Create a new Wave object
-  #new_wave_obj <- Wave(new_wave, samp.rate = wave@samp.rate, bit = wave@bit)
   
   return(new_wave)
 }
