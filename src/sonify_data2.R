@@ -18,6 +18,7 @@ sonify_data2 <- function(data_array_to_sonify,
                         pulse = 0,
                         pulse_amp = .2,
                         note_length = 0.1,
+                        feedback = TRUE,
                         wave_type = c("square","sine","triangle","sawtooth"),
                         scale = c("major","minor","mixolydian"),
                         to_play = TRUE) {
@@ -73,6 +74,14 @@ sonify_data2 <- function(data_array_to_sonify,
                pulse_amp = pulse_amp,
                stereo = FALSE)
   
+  if (feedback == TRUE) {
+    w2 <- add_feedback(w2, feedback_gain = 1, delay_samples = 44100 * .8) %>%
+    add_feedback(feedback_gain = 1, delay_samples = floor(44100 * .7)) %>%
+    add_feedback(feedback_gain = 1, delay_samples = 44100 * .5) %>%
+    add_feedback(feedback_gain = .5, delay_samples = 44100 * .2) 
+  }
+  
+  
   # Extract info from sonified notes
   SS1 <- extractWave(w2, from=1, to=nrow(w2))
   SS1m <- mono(Wave(SS1), "left")
@@ -125,24 +134,6 @@ sonify_data2 <- function(data_array_to_sonify,
 }
 
 
-wave_fun <- function(amplitude, frequency, total_time, sample_rate = 44100, waveform_type) {
-  
-  amplitude <- 5
-  frequency <- 220
-  sample_rate <- 44100
-  waveform_type <- "square"
-  time <- seq(0,total_time, by = 1/sample_rate)
 
-  if (waveform_type == "sine") {
-    waveform <- amplitude * sin(2 * pi * frequency * time)
-  } else if (waveform_type == "square") {
-    waveform <- amplitude * sin(7 * frequency * time) / (7 * pi)
-  } else if (waveform_type == "sawtooth") {
-    waveform <- amplitude * (2 * (time %% (1 / frequency)) / (1 / frequency) - 1)
-  } else {
-    stop("Invalid waveform type. Please choose 'sine', 'square', or 'sawtooth'.")
-  }
-}
-  
-a <- wave_fun(5,220,1,"square")
+#a <- wave_fun(5,220,1,"square")
 
