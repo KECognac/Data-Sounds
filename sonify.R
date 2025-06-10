@@ -2,6 +2,17 @@
 # an example.
 
 
+# TO DO
+
+# 1. Notes Library
+# 2. Curating an emotional experience
+# 3. Key
+#    - happy - major
+#    - sad - minor
+#    - 
+# 4. Temp, DO, Flow, Turbidity
+
+
 source('setup.R')
 light_pal <- c("#002EA3","#E70870","#745CFB","#256BF5","#1E4D2B","#56104E")
 dark_pal <- c("#000000","#FFFFFF","#1E4D2B","#745CFB","#FFCA3A","#56104E")
@@ -11,6 +22,11 @@ setWavPlayer("afplay")
 
 
 # For this example, we'll pull data from the Poudre Water Quality Network.
+
+data <- arrow::read_parquet("data/all_pwqn_data.parquet")
+sites <- unique(data$site)
+parameters <- unique(data$parameter)
+
 
 # load PWQN data
 all_PWQN <- load_psn()
@@ -37,13 +53,14 @@ ggplot(site_PWQN, aes(x = as.Date(DT_join), y = clean_mean, color = parameter)) 
   facet_wrap(~parameter, scales = "free")
 
 # Now, select parameter to sonify
-pars <- c(3,4) # can also type string here
+pars <- c(5) # can also type string here
 sd1 <- site_PWQN %>% 
   dplyr::filter(site == site_sel, 
                 parameter %in% unique(parameter)[pars]) %>%
   dplyr::mutate(date = as_datetime(DT_join)) %>%
  # dplyr::filter(date < as.Date("2023-12-12")) #%>%
-  dplyr::select(c(date, parameter, value = clean_mean)) #%>%
+  dplyr::select(c(date, parameter, value = clean_mean)) %>%
+  dplyr::filter(date <= min(date) + weeks(4)) #%>%
  # pivot_wider(names_from = "parameter", values_from = "value")
 
 # Define name for saving subsequent files
@@ -57,7 +74,8 @@ pg
 
 # if multiple parameters are selected, pivot table. 
 sd <- sd1 %>%
- pivot_wider(names_from = "parameter", values_from = "value")
+ pivot_wider(names_from = "parameter", values_from = "value") %>%
+  drop_na()
 
 # Save figure of data to be sonified
 ggsave(paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_data.jpg"),
@@ -87,13 +105,13 @@ ggsave(paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_data.jpg"),
 
 # Set some parameters for output sound
 total_seconds <- 60 # total length of "song"
-note_len <- .2 # length of each note
-ref_freq <- 261.63 # 
+note_len <- .1 # length of each note
+ref_freq <- 98 # 
 n_octaves <- 4
 
 main <- sonify_data2(data_array_to_sonify = sd[,2],
-                    ref_freq = ref_freq,
-                    to_plot = TRUE,
+                    #ref_freq = ref_freq,
+                    to_plot = FALSE,
                     octaves = n_octaves,
                     note_length = note_len,
                     total_seconds = total_seconds,
@@ -102,10 +120,10 @@ main <- sonify_data2(data_array_to_sonify = sd[,2],
                     to_play = FALSE) 
 
 # Play raw wave
-#play(main[[1]])
+play(main[[1]])
 
 # Add feedback
-feedback_wave <- add_feedback(main[[1]], feedback_gain = 1, delay_samples = 44100 * .8) %>%
+feedback_wave <- add_feedback(main[[1]], feedback_gain = 1, delay_samples = 44100 * .8) #%>%
     add_feedback(feedback_gain = 1, delay_samples = floor(44100 * .7)) %>%
     add_feedback(feedback_gain = 1, delay_samples = 44100 * .5) %>%
     add_feedback(feedback_gain = .5, delay_samples = 44100 * .2) 
@@ -124,14 +142,14 @@ dev.off()
 #a <- animate_sound(main[[2]][[6]], .2, 30)
 
 
-base <- sonify_data2(data_array_to_sonify = sd[,3],
-                     ref_freq = 65.4, # C2                                                                                                                                             
+base <- sonify_data2(data_array_to_sonify = sd[,2],
+                     ref_freq = ref_freq/2, # C2                                                                                                                                             
                      to_plot = TRUE,
-                     octaves = 1,
-                     amp = .5,
+                     octaves = 4,
+                     amp = .1,
                      note_length = 1,
                      total_seconds = total_seconds,
-                     wave_type = "sine", # square, triangle, sawtooth, sine
+                     wave_type = "square", # square, triangle, sawtooth, sine
                      scale = "minor",
                      to_play = FALSE) 
 # Now, join to other wave
@@ -140,8 +158,11 @@ joined_wave@.Data[,1] <- joined_wave@.Data[,1] + base[[1]]@.Data[,1]
 joined_wave@.Data[,2] <- joined_wave@.Data[,2] + base[[1]]@.Data[,2]
 joined_wave <- tuneR::normalize(joined_wave, unit = "16")
 
+play(base[[1]])
+
 # Play joined wave
 play(joined_wave)
+
 
 # save joined wave
 writeWave(joined_wave, paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,".wav"))
