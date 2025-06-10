@@ -9,10 +9,12 @@
 #' @param samp_width
 #' 
 sonify_data2 <- function(data_array_to_sonify, 
-                        ref_freq, 
+                        key = "A",
                         amp = 1,
+                        octave = 3,
                         to_plot = FALSE,
                         total_seconds = 30,
+                        feedback = TRUE,
                         #samp_width = 4*64,
                         octaves = 3,
                         pulse = 0,
@@ -22,15 +24,23 @@ sonify_data2 <- function(data_array_to_sonify,
                         scale = c("major","minor","mixolydian"),
                         to_play = TRUE) {
   
-  #data_array_to_sonify <- stream_discharge$discharge %>% log10()
-  #ref_freq <- ref_freq
-  #to_plot <- TRUE
-  #octaves <- 2
+  #data_array_to_sonify <- sd[,2]
+  #pulse <- 0
+  #pulse_amp <- 0.2
+  #ref_freq = ref_freq,
+  #to_plot <- FALSE
+  #octave <- 3
+  #octaves <- 4
   #note_length <- .2
-  #total_seconds <- 120
-  #wave_type <- "sine" # square, triangle, sawtooth, sine
+  #total_seconds <- 30
+  #wave_type <- "sine"
   #scale <- "minor"
   #to_play <- FALSE
+  #amp <- 1
+  #feedback <- TRUE
+  #key
+  
+  ref_freq <- note_to_freq(as.character(key), octave = octave) %>% as.numeric()
   
   # remove NA values
   data <- data_array_to_sonify[!is.na(data_array_to_sonify)]
@@ -72,6 +82,13 @@ sonify_data2 <- function(data_array_to_sonify,
                pulse_len = pulse,
                pulse_amp = pulse_amp,
                stereo = FALSE)
+  
+  if (feedback == TRUE) {
+    w2 <- add_feedback(w2, feedback_gain = .9, delay_samples = floor(44100 * .5)) %>%
+          add_feedback(feedback_gain = .8, delay_samples = floor(44100 * .4)) %>%
+      add_feedback(feedback_gain = .6, delay_samples = 44100 * .3) 
+      #add_feedback(feedback_gain = .5, delay_samples = 44100 * .2)# %>%
+  }
   
   # Extract info from sonified notes
   SS1 <- extractWave(w2, from=1, to=nrow(w2))
@@ -125,24 +142,5 @@ sonify_data2 <- function(data_array_to_sonify,
 }
 
 
-wave_fun <- function(amplitude, frequency, total_time, sample_rate = 44100, waveform_type) {
-  
-  amplitude <- 5
-  frequency <- 220
-  sample_rate <- 44100
-  waveform_type <- "square"
-  time <- seq(0,total_time, by = 1/sample_rate)
 
-  if (waveform_type == "sine") {
-    waveform <- amplitude * sin(2 * pi * frequency * time)
-  } else if (waveform_type == "square") {
-    waveform <- amplitude * sin(7 * frequency * time) / (7 * pi)
-  } else if (waveform_type == "sawtooth") {
-    waveform <- amplitude * (2 * (time %% (1 / frequency)) / (1 / frequency) - 1)
-  } else {
-    stop("Invalid waveform type. Please choose 'sine', 'square', or 'sawtooth'.")
-  }
-}
-  
-a <- wave_fun(5,220,1,"square")
 
