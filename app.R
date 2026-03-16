@@ -1,6 +1,7 @@
 library(shiny)
 library(dplyr)
 library(ggplot2)
+library(grDevices)
 library(bslib)
 library(arrow)
 library(plotly)
@@ -25,7 +26,27 @@ data <- arrow::read_parquet("data/sharing/all_pwqn_data.parquet")
 sites <- unique(data$site)
 parameters <- unique(data$parameter)
 
+river_palette <- function(n) {
+  # Define key "river" anchor colors:
+  # 1. Deep Water (#011f4b)
+  # 2. Moving Current (#005b96)
+  # 3. Shallow/Clear (#6497b1)
+  # 4. Riverbank Moss/Glacial Silt (#b3cde0)
+  # 5. Riparian Green (#2d5a27)
+  
+  river_colors <- c("#005b96","#011f4b","#6497b1", "#b3cde0", "#2d5a27","#a1d99b")
+  
+  # Create the interpolation function
+  pal <- colorRampPalette(river_colors)
+  
+  # Return the requested number of colors
+  return(pal(n))
+}
+
+
 #walk(list.files(path = "src/", full.names = T), source)
+
+
 
 
 ui <- page_navbar(
@@ -116,6 +137,8 @@ server <- function(input, output, session){
       return(NULL)
     }
     
+    n_sites <- length(unique(filtered_data()$site))
+    
     p <- ggplot(filtered_data(), aes(x = DT_round, y = clean_mean, color = site)) +
       geom_line() +
       geom_point() +
@@ -125,7 +148,8 @@ server <- function(input, output, session){
         x = "Date",
         y = ""
       ) +
-      theme_bw()
+      theme_bw() +
+      scale_color_manual("", values = river_palette(n_sites))
     
     ggplotly(p)
   })
@@ -148,7 +172,7 @@ server <- function(input, output, session){
 
   observeEvent(input$playBtn, {
     
-    cat("Memory before:", pryr::mem_used(), "\n")
+    #cat("Memory before:", pryr::mem_used(), "\n")
     
     sounds <- sonify_data2(filtered_data()$clean_mean,
                            note_length = input$noteLength,
@@ -189,7 +213,7 @@ server <- function(input, output, session){
     
     # Force garbage collection after processing
     gc()
-    cat("Memory after:", pryr::mem_used(), "\n")
+    #cat("Memory after:", pryr::mem_used(), "\n")
   })
   
   
