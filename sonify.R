@@ -23,30 +23,27 @@ setWavPlayer("afplay")
 
 # For this example, we'll pull data from the Poudre Water Quality Network.
 
-data <- arrow::read_parquet("data/all_pwqn_data.parquet")
-sites <- unique(data$site)
-parameters <- unique(data$parameter)
+all_PWQN <- arrow::read_parquet("data/sharing/all_pwqn_data.parquet")
+sites <- unique(all_PWQN$site)
+parameters <- unique(all_PWQN$parameter)
 
-
-# load PWQN data
-all_PWQN <- load_psn()
 
 # Select subset necessary for sound only
-sites <- c("archery virridy","archery","boxcreek","boxelder","cbri",              
-           "chd", "joei",  "lbea",  "legacy",  "lincoln",           
-           "pbd", "penn", "pfal", "prospect virridy", "prospect",          
-           "river bluffs", "sfm",  "springcreek", "tamasag", "timberline virridy",
-           "timberline")
+#sites <- c("archery virridy","archery","boxcreek","boxelder","cbri",              
+#           "chd", "joei",  "lbea",  "legacy",  "lincoln",           
+#           "pbd", "penn", "pfal", "prospect virridy", "prospect",          
+#           "river bluffs", "sfm",  "springcreek", "tamasag", "timberline virridy",
+#           "timberline")
 
 # Select site
-site_sel <- "prospect virridy"
+site_sel <- sites[1]
 
 # Filter all data to site only
 site_PWQN <-  all_PWQN %>%
   dplyr::filter(site == site_sel) 
 
 # Plot
-ggplot(site_PWQN, aes(x = as.Date(DT_join), y = clean_mean, color = parameter)) + 
+ggplot(site_PWQN, aes(x = as.Date(DT_round), y = clean_mean, color = parameter)) + 
   geom_point(size = .5) +
   theme_bw() +
   scale_color_manual("", values = c(light_pal, dark_pal)) +
@@ -57,10 +54,10 @@ pars <- c(5) # can also type string here
 sd1 <- site_PWQN %>% 
   dplyr::filter(site == site_sel, 
                 parameter %in% unique(parameter)[pars]) %>%
-  dplyr::mutate(date = as_datetime(DT_join)) %>%
+  dplyr::mutate(date = as_datetime(DT_round)) %>%
  # dplyr::filter(date < as.Date("2023-12-12")) #%>%
   dplyr::select(c(date, parameter, value = clean_mean)) %>%
-  dplyr::filter(date <= min(date) + weeks(4)) #%>%
+  dplyr::filter(date <= min(date) + weeks(104)) #%>%
  # pivot_wider(names_from = "parameter", values_from = "value")
 
 # Define name for saving subsequent files
@@ -104,20 +101,35 @@ ggsave(paste0("/Users/kcognac/Desktop/KEC_Docs/PSN_Sounds/",fname,"_data.jpg"),
 #.    B4	493.88
 
 # Set some parameters for output sound
-total_seconds <- 60 # total length of "song"
+sel_time <- 60 # total length of "song"
 note_len <- .1 # length of each note
 ref_freq <- 98 # 
 n_octaves <- 4
+sel_key <- "A"
+sel_amp <- 1
+sel_octave <- 3
+add_feedback <- FALSE
+sel_octaves <- 3
+pulse_amp <- 0.2
+sel_n_octaves <- 3
 
-main <- sonify_data2(data_array_to_sonify = sd[,2],
-                    #ref_freq = ref_freq,
-                    to_plot = FALSE,
-                    octaves = n_octaves,
-                    note_length = note_len,
-                    total_seconds = total_seconds,
-                    wave_type = "sine", # square, triangle, sawtooth, sine
-                    scale = "minor",
-                    to_play = FALSE) 
+
+main <- sonify_data2(data_array_to_sonify = sd[,2], 
+                     key = "A",
+                     amp = 1,
+                     octave = 3,
+                     to_plot = FALSE,
+                     total_seconds = 60,
+                     feedback = TRUE,
+                     octaves = 4,
+                     pulse = 0,
+                     pulse_amp = .2,
+                     note_length = .1,
+                     wave_type = "square", #c("square","sine","triangle","sawtooth"),
+                     scale = "minor",#c("major","minor","mixolydian"),
+                     to_play = TRUE) 
+
+
 
 # Play raw wave
 play(main[[1]])
