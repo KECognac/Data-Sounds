@@ -9,29 +9,22 @@
 #' @param samp_width
 #' 
 sonify_data2 <- function(data_array_to_sonify, 
-                        ref_freq, 
-                        amp = 1,
-                        to_plot = FALSE,
-                        total_seconds = 30,
-                        #samp_width = 4*64,
-                        octaves = 3,
-                        pulse = 0,
-                        pulse_amp = .2,
-                        note_length = 0.1,
-                        feedback = TRUE,
-                        wave_type = c("square","sine","triangle","sawtooth"),
-                        scale = c("major","minor","mixolydian"),
-                        to_play = TRUE) {
+                         key = "A",
+                         amp = 1,
+                         octave = 3,
+                         to_plot = FALSE,
+                         total_seconds = 30,
+                         feedback = TRUE,
+                         #samp_width = 4*64,
+                         octaves = 3,
+                         pulse = 0,
+                         pulse_amp = .2,
+                         note_length = 0.1,
+                         wave_type = c("square","sine","triangle","sawtooth"),
+                         scale = c("major","minor","mixolydian"),
+                         to_play = TRUE) {
   
-  #data_array_to_sonify <- stream_discharge$discharge %>% log10()
-  #ref_freq <- ref_freq
-  #to_plot <- TRUE
-  #octaves <- 2
-  #note_length <- .2
-  #total_seconds <- 120
-  #wave_type <- "sine" # square, triangle, sawtooth, sine
-  #scale <- "minor"
-  #to_play <- FALSE
+  ref_freq <- note_to_freq(as.character(key), octave = octave) %>% as.numeric()
   
   # remove NA values
   data <- data_array_to_sonify[!is.na(data_array_to_sonify)]
@@ -45,9 +38,9 @@ sonify_data2 <- function(data_array_to_sonify,
   }
   
   # Remap to set the range to specified # of octaves
+  # 12 notes in an octave so multiply by 6 in positive and negative directions
   new_range <- note_num_to_freq(c(-floor(6*octaves),floor(6*octaves)), ref = ref_freq) # C3
   data3 <- map_to_freq_range(data2,new_range[1],new_range[2])
-
   
   # derive note from FF given diapason 
   notes <- noteFromFF(data3, ref_freq)
@@ -55,8 +48,8 @@ sonify_data2 <- function(data_array_to_sonify,
   # remove NA if necessary (shouldn't be)
   notes[is.na(notes)] <- floor(mean(notes, na.rm = TRUE))
   
-  # convert to desired scale - hardwired for major 7th right now.
-  snotes <- scale_dict[[scale]](notes)  
+  # convert to desired scale.
+  snotes <- scale_dict[[scale]](notes)
   
   # Convert new notes back to frequency
   hz_notes <- note_num_to_freq(snotes, ref = ref_freq)
@@ -75,12 +68,23 @@ sonify_data2 <- function(data_array_to_sonify,
                stereo = FALSE)
   
   if (feedback == TRUE) {
-    w2 <- add_feedback(w2, feedback_gain = 1, delay_samples = 44100 * .8) %>%
-    add_feedback(feedback_gain = 1, delay_samples = floor(44100 * .7)) %>%
-    add_feedback(feedback_gain = 1, delay_samples = 44100 * .5) %>%
-    add_feedback(feedback_gain = .5, delay_samples = 44100 * .2) 
+    w2 <- add_feedback(w2, feedback_gain = .9, delay_samples = floor(44100 * .5)) %>%
+      add_feedback(feedback_gain = .8, delay_samples = floor(44100 * .4)) %>%
+      add_feedback(feedback_gain = .6, delay_samples = 44100 * .3) 
+    #add_feedback(feedback_gain = .5, delay_samples = 44100 * .2)# %>%
   }
   
+  
+  # convert notes to midi
+  tonic <- get_midi_note(note = key, 
+                         octave = octave)
+  
+  midi_df <- notes_to_midi(relative_notes = snotes,
+                           tonic = tonic)
+  
+  # Use the new manual function to export the MIDI file
+  output_file <- "/Users/kcognac/Desktop/Poudre Sounds Grant/test.mid"
+  write_midi_manual(midi_df, output_file)
   
   # Extract info from sonified notes
   SS1 <- extractWave(w2, from=1, to=nrow(w2))
@@ -88,7 +92,7 @@ sonify_data2 <- function(data_array_to_sonify,
   # Calculating periodograms of sections each consisting of 64 observations,
   # overlapping by 32 observations:
   SS1_obj <- periodogram(SS1m, width = 2^12, overlap = 64)#, normalize = TRUE, 
-
+  
   ff <- FF(SS1_obj)
   notes2 <- noteFromFF(ff, ref_freq)
   
@@ -101,17 +105,17 @@ sonify_data2 <- function(data_array_to_sonify,
     # Plot hertz
     plot(hz_notes)
     plots[[2]] <- recordPlot()
-  
-  # plot melody and energy of the sound:
+    
+    # plot melody and energy of the sound:
     melodyplot(SS1_obj, notes2)
     plots[[3]] <- recordPlot()
-
+    
     qnotes <- quantize(notes2, SS1_obj@energy, parts = 128)
-  
+    
     quantplot(qnotes, expected = rep(c(0, -12), each = 2), bars = 10)
     plots[[4]] <- recordPlot()
     # an plot it, 4 parts a bar (including expected values):
-
+    
     qlily <- quantMerge(notes2, 4, 4, 2)
     plots[[5]] <- recordPlot()
     
@@ -122,7 +126,7 @@ sonify_data2 <- function(data_array_to_sonify,
     plots[[6]] <- plot_dat
     
     #animate(p, fps = 1/note_length) 
-      
+    
   }
   
   if (to_plot == TRUE) {
@@ -134,6 +138,4 @@ sonify_data2 <- function(data_array_to_sonify,
 }
 
 
-
-#a <- wave_fun(5,220,1,"square")
 
